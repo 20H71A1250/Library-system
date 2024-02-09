@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library Catalog</title>
+  <style>
+    /* CSS Styles */
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f2f2f2; /* Light gray background */
+    }
+
+    .book-container {
+      display: inline-block;
+      margin: 10px; /* Add some margin between book containers */
+    }
+
+    .book-details {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #fff; /* White background */
+      max-width: 200px; /* Limit the width of the book details */
+    }
+
+    .book-details p {
+      margin: 5px 0;
+    }
+
+    form {
+      margin-bottom: 20px;
+    }
+
+    input[type="text"], button {
+      padding: 8px 12px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+
+    input[type="text"]:focus, button:focus {
+      outline: none;
+      border-color: #12e0c5; /* Turquoise focus color */
+    }
+
+    button {
+      background-color: #12e0c5; /* Turquoise button color */
+      color: #fff; /* White text color */
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0bb9a5; /* Darker turquoise color on hover */
+    }
+
+    .suggestion {
+      cursor: pointer;
+    }
+
+    /* Navigation CSS */
+    .nav {
+      background:transparent; /* Dark background color */
+      color: #181616; /* White text color */
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .nav h1 {
+      margin: 0;
+    }
+
+    .nav .logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .nav .logo img {
+      width: 40px;
+      height: 40px;
+      margin-right: 10px;
+      cursor: pointer; /* Add cursor pointer to indicate it's clickable */
+    }
+
+    .nav .cart-logo img {
+      width: 40px;
+      height: 40px;
+    }
+    
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div class="logo">
+      <img src="logo.png" alt="Logo" onclick="confirmRedirect()"> <!-- Trigger confirmation popup when clicked -->
+      <h1>Library Catalog</h1>
+    </div>
+    <div class="cart-logo">
+      <img src="cart.png" alt="Cart Icon"> <!-- Replace 'cart.png' with your cart icon image path -->
+      <span id="cartIcon">0</span> <!-- This will display the number of books in the cart -->
+    </div>
+  </div>
+
+  <div id="searchContainer">
+    <!-- Search form -->
+    <form id="searchForm">
+      <input type="text" id="titleQuery" placeholder="Search by Title">
+      <input type="text" id="authorQuery" placeholder="Search by Author">
+      <input type="text" id="isbnQuery" placeholder="Search by ISBN">
+      <input type="text" id="genreQuery" placeholder="Search by Genre">
+      <button type="submit">Search</button>
+    </form>
+    <!-- Suggestions container -->
+    <div id="suggestions"></div>
+  </div>
+
+  <div id="catalog">
+    <!-- Display book details here -->
+  </div>
+
+  <h2>Add a Book</h2>
+  <form id="addBookForm">
+    <input type="text" id="title" placeholder="Title" required><br>
+    <input type="text" id="author" placeholder="Author" required><br>
+    <input type="text" id="isbn" placeholder="ISBN" required><br>
+    <input type="text" id="genre" placeholder="Genre" required><br>
+    <input type="text" id="image" placeholder="Image URL (optional)"><br> <!-- Added input field for image URL -->
+    <button type="submit">Add Book</button>
+  </form>
+
+  <script>
+    // Define Book class
+    class Book {
+      constructor(title, author, isbn, genre, image) {
+        this.title = title;
+        this.author = author;
+        this.isbn = isbn;
+        this.genre = genre;
+        this.image = image;
+        this.available = true;
+      }
+
+      // Method to check out a book
+      checkout() {
+        if (this.available) {
+          this.available = false;
+          alert(`The book "${this.title}" has been successfully checked out.`);
+          return true; // Successfully checked out
+        } else {
+          alert(`Sorry, the book "${this.title}" is currently not available.`);
+          return false; // Book already checked out
+        }
+      }
+
+      // Method to return a book
+      returnBook() {
+        this.available = true;
+      }
+
+      // Method to display book details
+      displayDetails() {
+        return `<div class="book-container">
+          <img src="${this.image}" alt="${this.title}" width="150" height="200">
+          <div class="book-details">
+            <p>Title: ${this.title}</p>
+            <p>Author: ${this.author}</p>
+            <p>ISBN: ${this.isbn}</p>
+            <p>Genre: ${this.genre}</p>
+            <p>Availability: ${this.available ? 'Available' : 'Checked Out'}</p>
+            <button onclick="confirmRemove('${this.isbn}')">Remove</button>
+          </div>
+        </div>`;
+      }
+    }
+    
+    // Define LibraryCatalog class
+    class LibraryCatalog {
+      constructor() {
+        this.books = [];
+      }
+
+      // Method to add a book to the catalog
+      addBook(book) {
+        this.books.push(book);
+        this.saveToLocalStorage(); // Save catalog to local storage
+        this.updateCartIcon(); // Update cart icon after adding a book
+      }
+
+      // Method to remove a book from the catalog
+      removeBook(isbn) {
+        this.books = this.books.filter(book => book.isbn !== isbn);
+        this.saveToLocalStorage(); // Save catalog to local storage
+        this.updateCartIcon(); // Update cart icon after removing a book
+      }
+
+      // Method to search for a book
+      searchBook(titleQuery, authorQuery, isbnQuery, genreQuery) {
+        const results = this.books.filter(book =>
+          (book.title.toLowerCase().includes(titleQuery.toLowerCase()) || titleQuery === "") &&
+          (book.author.toLowerCase().includes(authorQuery.toLowerCase()) || authorQuery === "") &&
+          (book.isbn.toLowerCase().includes(isbnQuery.toLowerCase()) || isbnQuery === "") &&
+          (book.genre.toLowerCase().includes(genreQuery.toLowerCase()) || genreQuery === "")
+        );
+
+        if (results.length === 0) {
+          alert("Sorry, the book you searched for is not available in the catalog. Do you want to add it?");
+        }
+
+        return results;
+      }
+
+      // Method to display all books
+      displayAllBooks() {
+        return this.books.map(book => book.displayDetails()).join('');
+      }
+
+      // Method to update cart icon with the number of books
+      updateCartIcon() {
+        const cartIcon = document.getElementById('cartIcon');
+        cartIcon.innerText = this.books.length; // Update cart icon with the number of books in the catalog
+      }
+
+      // Method to save catalog to local storage
+      saveToLocalStorage() {
+        localStorage.setItem('catalog', JSON.stringify(this.books));
+      }
+
+      // Method to load catalog from local storage
+      loadFromLocalStorage() {
+        const storedCatalog = localStorage.getItem('catalog');
+        if (storedCatalog) {
+          this.books = JSON.parse(storedCatalog).map(bookData => {
+            const { title, author, isbn, genre, image, available } = bookData;
+            return new Book(title, author, isbn, genre, image, available);
+          });
+          this.updateCartIcon(); // Update cart icon after loading from local storage
+        }
+      }
+    }
+
+    // Instantiate LibraryCatalog
+    const catalog = new LibraryCatalog();
+
+    // Function to confirm redirection and redirect to homepage.html
+    function confirmRedirect() {
+      if (confirm("Are you sure you want to redirect to the homepage?")) {
+        window.location.href = 'homepage.html';
+      }
+    }
+
+    // Event listener for adding a book
+    document.getElementById('addBookForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const title = document.getElementById('title').value;
+      const author = document.getElementById('author').value;
+      const isbn = document.getElementById('isbn').value;
+      const genre = document.getElementById('genre').value;
+      const imageInput = document.getElementById('image'); // Get the image input field
+      const image = imageInput.value ? imageInput.value : 'default.jpg'; // Use provided image URL or default image
+      const newBook = new Book(title, author, isbn, genre, image);
+      catalog.addBook(newBook);
+      displayCatalog();
+      this.reset();
+    });
+
+    // Event listener for searching a book
+    document.getElementById('searchForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      const titleQuery = document.getElementById('titleQuery').value;
+      const authorQuery = document.getElementById('authorQuery').value;
+      const isbnQuery = document.getElementById('isbnQuery').value;
+      const genreQuery = document.getElementById('genreQuery').value;
+      const searchResults = catalog.searchBook(titleQuery, authorQuery, isbnQuery, genreQuery);
+      displaySearchResults(searchResults);
+    });
+
+    // Function to display catalog
+    function displayCatalog() {
+      document.getElementById('catalog').innerHTML = catalog.displayAllBooks();
+    }
+
+    // Function to display search results
+    function displaySearchResults(books) {
+      document.getElementById('catalog').innerHTML = books.map(book => book.displayDetails()).join('');
+    }
+
+    // Function to remove a book
+    function removeBook(isbn) {
+      catalog.removeBook(isbn);
+      displayCatalog(); // Update the catalog display after removing the book
+    }
+
+    // Function to confirm book removal
+    function confirmRemove(isbn) {
+      if (confirm("Are you sure you want to remove this book?")) {
+        removeBook(isbn);
+      }
+    }
+
+    // Initially load catalog from local storage
+    catalog.loadFromLocalStorage();
+    displayCatalog();
+  </script>
+</body>
+</html>
